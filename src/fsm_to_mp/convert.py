@@ -14,7 +14,7 @@ def convert_map(game_map: Map) -> ConversionResult:
         warnings.extend(tile_warnings)
 
     return ConversionResult(
-        Map(game_map.width, game_map.height, tuple(converted_tiles), game_map.layer, game_map.metadata),
+        Map(game_map.width, game_map.height, tuple(converted_tiles), game_map.layer, game_map.metadata, game_map.features),
         tuple(warnings),
     )
 

@@ -3,6 +3,35 @@
 The converter maps FreeCol Classic terrain to the original Colonization plane-0
 terrain byte. It emits warnings for approximations and lost state.
 
+## Geometry
+
+FreeCol's map is not a square grid. It draws diamonds in staggered rows: north
+is two rows up, north-east one row up (FreeCol's `Direction.java`). Seen from
+above, each diamond is a square turned by 45 degrees and each row is half a
+tile tall. Copying FreeCol tile (x, y) to square (x, y), as version 0.1 did,
+makes a map twice as tall as it should be and breaks every river that runs
+north into dots.
+
+So the converter resamples the map onto squares (`src/fsm_to_mp/resample.py`):
+
+- A FreeCol map of w x h tiles becomes round(w x 1.414) x round(h / 1.414)
+  squares, about the same number of squares as it had tiles. FreeCol's "small"
+  maps (40 x 100) become 57 x 71, the size of the original's America (58 x 72).
+- A map over 228 squares a side (OpenCol's limit) is scaled down to fit, with
+  the warning `scaled-to-fit`.
+- **Terrain:** each square takes the diamond under its centre.
+- **Placed things** are put forward instead: the square that holds a diamond's
+  centre gets that diamond's village, river, resource or rumour, and takes its
+  terrain. Sampling would miss about one diamond in six; forward placement
+  misses none, and rivers stay connected. Where two placed diamonds fall on one
+  square, the stronger wins: village, then river (major over minor), then
+  resource, then rumour.
+- **The frame:** a new game on a loaded map makes columns 0, 1, w-2 and w-1 sea
+  lane and the top and bottom rows arctic. The FreeCol map is drawn inside that
+  frame, and the frame is written as the game will make it.
+
+`--copy-tiles` keeps 0.1's square-for-square copy.
+
 ## Exact Terrain
 
 | FreeCol type | `.MP` ID / bits | Result |
@@ -57,10 +86,24 @@ The original `.MP` table has ocean and sea lane/high seas but no distinct lake
 or great-river water terrain. Great rivers in FreeCol are water tiles navigable
 by ships, whereas original Colonization major rivers are land-tile overlays.
 
+## Placed things in the `.MPX`
+
+`--mpx` (and the web page's second download) also writes OpenCol's `.MPX`,
+which carries what the `.MP` cannot, by the original's rules:
+
+| FreeCol | `.MPX` | Dropped, with a warning |
+| --- | --- | --- |
+| resources | `RSRC`: the square has its terrain's bonus | a kind that is not the terrain's bonus (`resource-mismatch`; mostly lumber on mixed forest, where the original has beaver) |
+| Lost City Rumours | `RUMR` | one on water or arctic (`rumour-on-water`) |
+| native settlements, tribe and capital | `VILL` version 2, placed exactly | none: one on hills, mountains or arctic, where the original places no village, moves to the nearest square within 2 that can hold it (`village-moved`) |
+
+What a village teaches, what it wants and its braves are not kept: the game
+gives every village its own, as on any map.
+
 ## Lost
 
-The output is a map terrain file, not a savegame. These FreeCol features are
-not written to `.MP`:
+The `.MP` is a map terrain file, not a savegame. These FreeCol features are
+not written to `.MP` (the `.MPX` keeps resources, rumours and settlements, above):
 
 - regions and region names
 - native settlements

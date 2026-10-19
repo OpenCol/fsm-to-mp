@@ -69,11 +69,8 @@ European entry metadata, players, markets, and all non-map game state.
 
 ## Colonization `.MP`
 
-The local reverse-engineering repository documents the original format in:
-
-- `/Users/danielderevjanik/Repositories/dderevjanik/col-win-re/docs/formats/map-file.md`
-- `/Users/danielderevjanik/Repositories/dderevjanik/col-win-re/docs/findings/terrain-table.md`
-- `/Users/danielderevjanik/Repositories/dderevjanik/col-win-re/docs/findings/map-planes.md`
+The original format is documented on the OpenCol documentation site:
+[`.MP` map files](https://opencol.github.io/docs/formats/shared/mp-map/).
 
 Binary layout:
 
@@ -133,3 +130,30 @@ header and plane-0 terrain encoding, but their comments say planes 1 and 2 are
 unknown/zero. The local binary RE found live meanings for those planes in saves,
 so this converter zeroes them for map-only output and documents them as not
 fully representable from `.fsm` terrain alone.
+
+## OpenCol `.MPX`
+
+OpenCol's map file: a chunked container that holds the `.MP`'s terrain plane
+and what a map places on it. `src/fsm_to_mp/mpx/format.py` gives the byte
+layout; OpenCol's `docs/proposals/svx-mpx.md` is the specification.
+
+```text
+header: "OCMP"  0D 0A 1A 0A  major u16 (1)  minor u16 (0)
+chunk:  id (4)  length u32  version u16  flags u16  data  crc32 u32 (over id .. data)
+last:   "END " with no data
+```
+
+| Chunk | Version | Flags | Holds |
+| --- | ---: | --- | --- |
+| `HEAD` | 1 | REQUIRED | width, height (u16 each) |
+| `TERR` | 1 | REQUIRED | plane 0 of the `.MP`, width x height bytes |
+| `RSRC` | 1 | REQUIRED | one byte per square: 1 the square's terrain bonus, 0 none |
+| `RUMR` | 1 | REQUIRED | one byte per square: 1 a Lost City Rumour, 0 none |
+| `VILL` | 2 | REQUIRED | count u16, then per village tribe u8 (0-7), flags u8 (1 the capital), x u16, y u16 |
+| `INFO` | 1 | KEEP | `key=value` lines in ASCII: `title`, `author`, `source`, `license`, `converter`, `features` |
+
+REQUIRED is 1 and KEEP is 2. A layer the source map does not have is left out,
+and the game then makes its own resources, rumours or villages, as for any
+`.MP`. With `VILL`, only the villages listed are placed, each exactly on its
+square. Tribe numbers are the original's order: Inca 0, Aztec 1, Arawak 2,
+Iroquois 3, Cherokee 4, Apache 5, Sioux 6, Tupi 7.

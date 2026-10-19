@@ -4,7 +4,7 @@ from pathlib import Path
 import zipfile
 import xml.etree.ElementTree as ET
 
-from fsm_to_mp.model import Elevation, Map, River, Tile, WaterKind
+from fsm_to_mp.model import Elevation, Features, Map, River, Tile, Village, WaterKind
 
 
 SAVEGAME_XML = "savegame.xml"
@@ -26,6 +26,19 @@ WATER_TYPES = {
     "highSeas": WaterKind.HIGH_SEAS,
     "lake": WaterKind.LAKE,
     "greatRiver": WaterKind.GREAT_RIVER,
+}
+
+
+# FreeCol's native nations as the original's tribe numbers (its nation index less 4)
+TRIBES = {
+    "model.nation.inca": 0,
+    "model.nation.aztec": 1,
+    "model.nation.arawak": 2,
+    "model.nation.iroquois": 3,
+    "model.nation.cherokee": 4,
+    "model.nation.apache": 5,
+    "model.nation.sioux": 6,
+    "model.nation.tupi": 7,
 }
 
 
@@ -52,9 +65,12 @@ def read_fsm(path: str | Path) -> Map:
     width = _required_int(map_el, "width")
     height = _required_int(map_el, "height")
     by_pos: dict[tuple[int, int], Tile] = {}
+    by_id: dict[str, tuple[int, int]] = {}
     for tile_el in map_el.findall("tile"):
         tile = _read_tile(tile_el)
         by_pos[(tile.x, tile.y)] = tile
+        if tile_el.get("id"):
+            by_id[tile_el.get("id")] = (tile.x, tile.y)
 
     tiles: list[Tile] = []
     for y in range(height):
@@ -73,7 +89,30 @@ def read_fsm(path: str | Path) -> Map:
             "minimumLatitude": map_el.get("minimumLatitude", ""),
             "maximumLatitude": map_el.get("maximumLatitude", ""),
         },
+        features=_read_features(root, map_el, by_id),
     )
+
+
+def _read_features(root: ET.Element, map_el: ET.Element, by_id: dict[str, tuple[int, int]]) -> Features:
+    """the resources, rumours and native settlements the map places, by FreeCol tile"""
+    resources: dict[tuple[int, int], str] = {}
+    rumours: set[tuple[int, int]] = set()
+    for el in map_el.iter("resource"):
+        if el.get("tile") in by_id and el.get("type"):
+            resources[by_id[el.get("tile")]] = el.get("type").rsplit(".", 1)[-1]
+    for el in map_el.iter("lostCityRumour"):
+        if el.get("tile") in by_id:
+            rumours.add(by_id[el.get("tile")])
+    nations = {el.get("id"): el.get("nationId") for el in root.iter("player")}
+    villages: list[Village] = []
+    for el in root.iter("indianSettlement"):
+        tribe = TRIBES.get(nations.get(el.get("owner"), ""))
+        if el.get("tile") not in by_id or tribe is None:
+            continue
+        x, y = by_id[el.get("tile")]
+        capital = (el.get("settlementType") or "").endswith(".capital")
+        villages.append(Village(x, y, tribe, capital, el.get("name", "")))
+    return Features(resources, frozenset(rumours), tuple(villages))
 
 
 def summarize_fsm(path: str | Path) -> dict[str, object]:

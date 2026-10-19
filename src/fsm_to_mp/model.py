@@ -38,12 +38,31 @@ class Tile:
 
 
 @dataclass(frozen=True)
+class Village:
+    x: int
+    y: int
+    tribe: int  # 0-7, the original's order (Inca, Aztec, Arawak, Iroquois, Cherokee, Apache, Sioux, Tupi)
+    capital: bool = False
+    name: str = ""
+
+
+@dataclass(frozen=True)
+class Features:
+    """What a map places beyond its terrain: resources (by kind), rumours, villages."""
+
+    resources: dict[tuple[int, int], str] = field(default_factory=dict)
+    rumours: frozenset[tuple[int, int]] = frozenset()
+    villages: tuple[Village, ...] = ()
+
+
+@dataclass(frozen=True)
 class Map:
     width: int
     height: int
     tiles: tuple[Tile, ...]
     layer: str | None = None
     metadata: dict[str, str] = field(default_factory=dict)
+    features: Features = field(default_factory=Features)
 
     def __post_init__(self) -> None:
         expected = self.width * self.height
