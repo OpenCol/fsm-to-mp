@@ -15,8 +15,10 @@ north into dots.
 So the converter resamples the map onto squares (`src/fsm_to_mp/resample.py`):
 
 - A FreeCol map of w x h tiles becomes round(w x 1.414) x round(h / 1.414)
-  squares, about the same number of squares as it had tiles. FreeCol's "small"
-  maps (40 x 100) become 57 x 71, the size of the original's America (58 x 72).
+  squares, about the same number of squares as it had tiles. A map that comes
+  within 2 squares of the original's America (58 x 72) is made exactly that
+  size, since the original draws its minimap wrongly on narrower maps: so
+  FreeCol's "small" maps (40 x 100, 57 x 71) become 58 x 72.
 - A map over 228 squares a side (OpenCol's limit) is scaled down to fit, with
   the warning `scaled-to-fit`.
 - **Terrain:** each square takes the diamond under its centre.

@@ -367,6 +367,10 @@ function roundHalfUp(value) {
 export function resampledSize(width, height, maxSide = MAX_SIDE) {
   const w = Math.max(2 * FRAME_X + 1, roundHalfUp(width * Math.SQRT2));
   const h = Math.max(2 * FRAME_Y + 1, roundHalfUp(height / Math.SQRT2));
+  if (Math.abs(w - 58) <= 2 && Math.abs(h - 72) <= 2) {
+    // the original's own size: its minimap is drawn wrongly on a map narrower than 58
+    return { width: 58, height: 72, scaled: false };
+  }
   if (Math.max(w, h) <= maxSide) {
     return { width: w, height: h, scaled: false };
   }

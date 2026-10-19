@@ -30,6 +30,7 @@ from fsm_to_mp.model import ConversionWarning, Features, Map, River, Tile, Villa
 
 MAX_SIDE = 228  # OpenCol's longest side (the off-map markers start at 0xE4)
 FRAME_X, FRAME_Y = 2, 1  # the sea-lane columns and the arctic rows on each side
+CLASSIC = (58, 72)  # the original's America: a map that comes within 2 of it is made that size
 
 
 def _round(value: float) -> int:
@@ -41,6 +42,9 @@ def resampled_size(width: int, height: int, max_side: int = MAX_SIDE) -> tuple[i
     """the square map's width and height, frame included, and whether it was scaled down to fit"""
     w = max(2 * FRAME_X + 1, _round(width * math.sqrt(2)))
     h = max(2 * FRAME_Y + 1, _round(height / math.sqrt(2)))
+    if abs(w - CLASSIC[0]) <= 2 and abs(h - CLASSIC[1]) <= 2:
+        # the original's own size: its minimap is drawn wrongly on a map narrower than 58
+        return CLASSIC[0], CLASSIC[1], False
     if max(w, h) <= max_side:
         return w, h, False
     k = max_side / max(w, h)

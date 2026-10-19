@@ -21,7 +21,8 @@ def freecol_map(width, height, river=(), hills=(), features=Features()):
 
 
 def test_size_keeps_the_tile_count_and_fits_the_side():
-    assert resampled_size(40, 100) == (57, 71, False)  # FreeCol's "small" map: classic size
+    assert resampled_size(40, 100) == (58, 72, False)  # FreeCol's "small" map: 57 x 71, made classic
+    assert resampled_size(30, 120) == (42, 85, False)
     assert resampled_size(180, 300) == (228, 190, True)
 
 
